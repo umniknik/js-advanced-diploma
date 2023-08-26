@@ -1,3 +1,6 @@
+import GamePlay from './GamePlay';
+import themes from './themes';
+
 export default class GameController {
   constructor(gamePlay, stateService) {
     this.gamePlay = gamePlay;
@@ -5,6 +8,7 @@ export default class GameController {
   }
 
   init() {
+    this.gamePlay.drawUi(themes.prairie);
     // TODO: add event listeners to gamePlay events
     // TODO: load saved stated from stateService
   }

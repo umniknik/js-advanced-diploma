@@ -1,0 +1,36 @@
+{
+    "extends": "airbnb-base",
+    "env": {
+       "es6": true,
+       "browser": true,
+       "jest": true
+    },
+    "rules": {
+      "no-restricted-syntax": [
+        "error",
+        "LabeledStatement",
+        "WithStatement"
+      ]
+    }
+  }
+
+// {
+//     "extends": "airbnb-base",
+//     "env": {
+//        "es6": true,
+//        "browser": true,
+//        "jest": true
+//     },
+//     "rules": {
+//       "no-restricted-syntax": [
+//         "error",
+//         "LabeledStatement",
+//         "WithStatement"
+//       ],
+//       "no-plusplus": 0,
+//       "no-new": 0,
+//       "no-alert": 0,
+//       "no-console": 0,
+//       "no-restricted-globals": 0
+//     }
+//   }
