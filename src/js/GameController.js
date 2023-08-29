@@ -20,7 +20,12 @@ export default class GameController {
   init() {
     this.gamePlay.drawUi(themes.prairie);
     // TODO: add event listeners to gamePlay events
+    //Запускаем слушателей по наведение, убиранию и клику по ячейкам
+    this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
+    this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
+    this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
     // TODO: load saved stated from stateService
+
     this.start();
   }
 
@@ -57,6 +62,8 @@ export default class GameController {
 
     //отрисовываем всех персонажей
     this.gamePlay.redrawPositions(positionedCharacter);
+    //сохраняем позиции всех в "глобальную" переменную
+    this.gamePlay.positionedCharacter = positionedCharacter;
   }
 
   // Формирование компанд
@@ -82,13 +89,44 @@ export default class GameController {
 
   onCellClick(index) {
     // TODO: react to click
+    const check = this.findCharacterOnCellindex(index);
+    if (check) {
+      console.log (check);
+      this.gamePlay.showCellTooltip('privet', index);
+    } else {
+      console.log ('нет персонажа');
+    }
+    
+    //console.log(this.gamePlay.positionedCharacter);
+
   }
 
   onCellEnter(index) {
     // TODO: react to mouse enter
+    const check = this.findCharacterOnCellindex(index);
+    if (check) {
+      //console.log (check);
+      const message = this.formTooltip(check);
+      this.gamePlay.showCellTooltip(message, index);
+    } else {
+      console.log ('нет персонажа');
+    }
   }
 
   onCellLeave(index) {
     // TODO: react to mouse leave
+    this.gamePlay.hideCellTooltip(index);
+  }
+
+  //Проверяем нет ли на клетке персонажа
+  findCharacterOnCellindex(index) {
+    const rezult = this.gamePlay.positionedCharacter.find(e => e.position === index)
+    return rezult;
+  }
+  // формируем текст подсказки
+  formTooltip(check) {
+    const {level, attack, defence, health  } = check.character;
+    const message = `\u{1F396}${level} \u{2694}${attack} \u{1F6E1}${defence} \u{2764}${health}`
+    return message;
   }
 }
