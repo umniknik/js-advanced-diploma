@@ -1,7 +1,10 @@
 import GamePlay from './GamePlay';
 import themes from './themes';
+import GameState from './GameState';
+import cursors from './cursors';
 
 import { generateTeam } from './generators';
+import { possibleMoveIndexes } from './utils';
 import PositionedCharacter from './PositionedCharacter';
 
 import Bowman from "./characters/bowman";
@@ -31,24 +34,25 @@ export default class GameController {
 
   //Старт игры
   start() {
+    this.gameState = new GameState();
     //Формируем команды
     const goodTeam = this.formteam([Bowman, Swordsman, Magician]);
     const badTeam = this.formteam([Daemon, Undead, Vampire]);
 
     // Расставляем игроков на поле случайным образом
     // Формируем список возможных позиций для команды хороших
-   // const positionedCharacter = [];
-    
+    // const positionedCharacter = [];
+
     const goodAllPositins = [];
     for (let i = 0; i < 64; i++) {
       if (i % 8 === 0 || (i - 1) % 8 === 0) {
         goodAllPositins.push(i);
       }
     }
-// Формируем список возможных позиций для команды плохих
+    // Формируем список возможных позиций для команды плохих
     const badAllPositins = [];
     for (let i = 0; i < 64; i++) {
-      if ((i + 2)  % 8 === 0 || (i + 1) % 8 === 0) {
+      if ((i + 2) % 8 === 0 || (i + 1) % 8 === 0) {
         badAllPositins.push(i);
       }
     }
@@ -84,38 +88,84 @@ export default class GameController {
 
     return positionedCharacter;
     // Отрисовываем персоонажей
-    
+
   }
 
+
+  //Действия при клике на любую клетку
   onCellClick(index) {
     // TODO: react to click
-    const check = this.findCharacterOnCellindex(index);
-    if (check) {
-      console.log (check);
-      this.gamePlay.showCellTooltip('privet', index);
+
+    const check = this.findCharacterOnCellindex(index);       //ищем персонажа на кликнутой клетке, если есть, то сохраняем в константу 
+
+    if (check) {                                             //Если в кликнутой ячейке есть игрок, то ...
+      //После клика проверяем в какой команде игрок
+      if (this.definingСommand(check.character.type)) {
+
+        //Если какая-то ячека была выделена, то снимаем выделение
+        if (this.gameState.indexSelectedCell) {
+          this.gamePlay.deselectCell(this.gameState.indexSelectedCell);
+        }
+
+        this.gamePlay.selectCell(index);                     //Выделаем персонажа
+
+        this.gameState.indexSelectedCell = index;           //Записываем в gameState индекс выделенной ячейки
+        console.log(this.gameState.indexSelectedCell);
+
+      } else {
+        GamePlay.showError('Это персонаж врага, вам нельзя им управлять!');
+      }
+
+
     } else {
-      console.log ('нет персонажа');
+      console.log('в этой клетке нет персонажа');
     }
-    
-    //console.log(this.gamePlay.positionedCharacter);
 
   }
 
+  //Действие при наведении курсора на клетку
   onCellEnter(index) {
     // TODO: react to mouse enter
-    const check = this.findCharacterOnCellindex(index);
-    if (check) {
-      //console.log (check);
-      const message = this.formTooltip(check);
-      this.gamePlay.showCellTooltip(message, index);
-    } else {
-      console.log ('нет персонажа');
+    const check = this.findCharacterOnCellindex(index);         // находим персонажа на кликнутой ячейке
+
+    if (check) {                                                //проверяем, есть ли в наведенной клетке персонаж
+      if (this.definingСommand(check.character.type)) {          //если есть персонаж, то проверяем в какой команде, если в хорошей, то ....
+        const message = this.formTooltip(check);                  // формируем сообщение с харатеристиками для показа ниже в подсказке
+        this.gamePlay.showCellTooltip(message, index);            // при наведении на персонажа, показываем подсказку с характеристиками персорнажа
+        this.gamePlay.setCursor(cursors.pointer);                 // если есть персонаж, то меняем курсор на палец
+      } else {                                                  //если персонаж в плохой команде, то ...
+        this.gamePlay.setCursor(cursors.crosshair);               // при наведении курсор меняется на прицел
+        this.gamePlay.selectCell(index, "red");                   // при наведении ячека помечается красным кружком
+      }
+
+    } else {                                                    // если в ячейке нет персонажа, то ...
+      console.log('нет персонажа');
+      this.gamePlay.setCursor(cursors.auto);                       // если персонажа нет, то курсор меняем на стрелку
+
+      if (this.gameState.indexSelectedCell) {                      //если на поле есть выбранный персонаж, то ...
+        const character = this.findCharacterOnCellindex(this.gameState.indexSelectedCell);    // сохраняем в переменную выбранного персонажа
+        const possibleMove = possibleMoveIndexes(this.gameState.indexSelectedCell, character.character.distanceMovi);     // Получаем массив ячеек на которые может ходить персонаж
+
+         //Здесь надо добавить в этот нижний if ещё одну ветку, где сначала проверяется не наведено ли на врага
+        if (possibleMove.find(e => e === index)) {                 // если индекс клеткаю, на которую навели, есть в массиве возможных выбранного шагов персонажа, то ...
+          this.gamePlay.selectCell(index, "green");                    // подсвечиваем клетку зелёным кружком 
+        } else {                                                   // если индекса наведенной клетки нет в массиве возможных ходов выбранного персонажа, то ...
+          this.gamePlay.setCursor(cursors.notallowed);                // меняем курсор на знак "запрещено"
+        }
+      }
     }
   }
 
+  //Дествия при покадании курсора любой клетки
   onCellLeave(index) {
     // TODO: react to mouse leave
-    this.gamePlay.hideCellTooltip(index);
+    this.gamePlay.hideCellTooltip(index);                        //прячем подсказку с характеристиками, если курсор не наведен на персонажа
+
+    //Убираем подсвечивание клетки зелёным
+    if (this.gameState.indexSelectedCell !== index) {            //если клетка не равна клетке в которой есть отмеченный персонаж, то ...
+      this.gamePlay.deselectCell(index);                         // убираем подсвечивание клетки 
+
+    }
   }
 
   //Проверяем нет ли на клетке персонажа
@@ -125,8 +175,14 @@ export default class GameController {
   }
   // формируем текст подсказки
   formTooltip(check) {
-    const {level, attack, defence, health  } = check.character;
+    const { level, attack, defence, health } = check.character;
     const message = `\u{1F396}${level} \u{2694}${attack} \u{1F6E1}${defence} \u{2764}${health}`
     return message;
   }
+
+  //Определяем в какой компанде игрок
+  definingСommand(user) {
+    return !!['bowman', 'swordsman', 'magician'].find(e => e === user);
+  }
 }
+

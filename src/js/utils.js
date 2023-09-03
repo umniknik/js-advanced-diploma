@@ -63,3 +63,127 @@ export function calcHealthLevel(health) {
 
   return 'high';
 }
+
+// Функция получения массива возможных клеток, на которые может сходить или атаковать персонаж двигаясб как ферзь 
+export function possibleMoveIndexes(index, distance) {
+  const arrr = [];
+  console.log(index);
+  //Берем в массив ячеки слева от позиции
+  for (let i = 1; i <= distance; i += 1) {
+    if (index % 8 === 0) {   //Если игрок стоит на левом краю, то слева брать ячейки нельзя
+      break;
+    }
+
+    arrr.push(index - i);
+
+    if ((index - i) % 8 === 0) {    //Если следующая ячеку крайняя слева, то больше в массив не берем
+      break;
+    }
+  }
+
+  //Берем в массив ячеки справа от позиции    
+  for (let i = 1; i <= distance; i += 1) {
+    if ((index + 1) % 8 === 0) {   //Если игрок стоит на правом краю, то справа брать ячейки нельзя
+      break;
+    }
+    arrr.push(index + i);
+    if ((index + i + 1) % 8 === 0) {    //Если следующая ячеку крайняя слева, то больше в массив не берем
+      break;
+    }
+  }
+
+  //Берём ячейки сверху
+  for (let i = 1; i <= distance; i += 1) {
+    const step = 8 * i;
+    if (index - step < 0) {   //Если игрок стоит на левом краю, то слева брать ячейки нельзя
+      break;
+    }
+    arrr.push(index - step);
+  }
+
+  //Берём ячейки снизу
+  for (let i = 1; i <= distance; i += 1) {
+    const step = 8 * i;
+    if (index + step > 8 * 8) {   //Если игрок стоит на левом краю, то слева брать ячейки нельзя
+      break;
+    }
+    arrr.push(index + step);
+  }
+
+  //Берёс ячейки по диагонали
+  // Вверх и влево
+  for (let i = 1; i <= distance; i += 1) {
+    if (index % 8 === 0) {   //Если игрок стоит на левом краю, то слева брать ячейки нельзя
+      break;
+    }
+
+    const newindex = index - i;
+
+    const step = 8 * i;
+    if (newindex - step < 0) {   //Если игрок стоит на левом краю, то слева брать ячейки нельзя
+      break;
+    }
+    arrr.push(newindex - step);
+
+    if ((index - i) % 8 === 0) {    //Если следующая ячеку крайняя слева, то больше в массив не берем
+      break;
+    }
+  }
+
+  // Вниз и влево
+  for (let i = 1; i <= distance; i += 1) {
+    if (index % 8 === 0) {   //Если игрок стоит на левом краю, то слева брать ячейки нельзя
+      break;
+    }
+
+    const newindex = index - i;
+
+    const step = 8 * i;
+    if (newindex + step > 8 * 8) {   //Если игрок стоит на левом краю, то слева брать ячейки нельзя
+      break;
+    }
+    arrr.push(newindex + step);
+
+    if ((index - i) % 8 === 0) {    //Если следующая ячеку крайняя слева, то больше в массив не берем
+      break;
+    }
+  }
+
+  // Вверх и вправо
+  for (let i = 1; i <= distance; i += 1) {
+    if ((index + 1) % 8 === 0) {   //Если игрок стоит на правом краю, то справа брать ячейки нельзя
+      break;
+    }
+    const newindex = index + i;
+
+    const step = 8 * i;
+    if (newindex - step < 0) {   //Если игрок стоит на левом краю, то слева брать ячейки нельзя
+      break;
+    }
+    arrr.push(newindex - step);
+
+    if ((index + i + 1) % 8 === 0) {    //Если следующая ячеку крайняя слева, то больше в массив не берем
+      break;
+    }
+  }
+
+  // Вниз и вправо
+  for (let i = 1; i <= distance; i += 1) {
+    if ((index + 1) % 8 === 0) {   //Если игрок стоит на правом краю, то справа брать ячейки нельзя
+      break;
+    }
+    const newindex = index + i;
+
+    const step = 8 * i;
+    if (newindex + step > 8 * 8) {   //Если игрок стоит на левом краю, то слева брать ячейки нельзя
+      break;
+    }
+    arrr.push(newindex + step);
+
+    if ((index + i + 1) % 8 === 0) {    //Если следующая ячеку крайняя слева, то больше в массив не берем
+      break;
+    }
+  }
+
+  return arrr;  
+}
