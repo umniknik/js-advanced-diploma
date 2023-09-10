@@ -5,6 +5,7 @@ import cursors from './cursors';
 
 import { generateTeam } from './generators';
 import { possibleMoveIndexes } from './utils';
+import { possibleAttackIndexes } from './utils';
 import PositionedCharacter from './PositionedCharacter';
 
 import Bowman from "./characters/bowman";
@@ -36,8 +37,8 @@ export default class GameController {
   start() {
     this.gameState = new GameState();
     //Формируем команды
-    const goodTeam = this.formteam([Bowman, Swordsman, Magician]);
-    const badTeam = this.formteam([Daemon, Undead, Vampire]);
+    this.goodTeam = this.formteam([Bowman, Swordsman, Magician]);
+    this.badTeam = this.formteam([Daemon, Undead, Vampire]);
 
     // Расставляем игроков на поле случайным образом
     // Формируем список возможных позиций для команды хороших
@@ -60,9 +61,9 @@ export default class GameController {
     let positionedCharacter = [];
 
     //Формируем позиции команды хороших
-    positionedCharacter = this.formPositionsTeam(goodTeam, goodAllPositins, positionedCharacter);
+    positionedCharacter = this.formPositionsTeam(this.goodTeam, goodAllPositins, positionedCharacter);
     //Формируем позиции команды плохих все в обном массиве с позициями хороших
-    positionedCharacter = this.formPositionsTeam(badTeam, badAllPositins, positionedCharacter);
+    positionedCharacter = this.formPositionsTeam(this.badTeam, badAllPositins, positionedCharacter);
 
     //отрисовываем всех персонажей
     this.gamePlay.redrawPositions(positionedCharacter);
@@ -93,14 +94,14 @@ export default class GameController {
 
 
   //Действия при клике на любую клетку
-  onCellClick(index) {
+  async onCellClick(index) {
     // TODO: react to click
-
+    console.log('Кликнутая клетка', index);
     const check = this.findCharacterOnCellindex(index);       //ищем персонажа на кликнутой клетке, если есть, то сохраняем в константу 
 
     if (check) {                                             //Если в кликнутой ячейке есть игрок, то ...
       //После клика проверяем в какой команде игрок
-      if (this.definingСommand(check.character.type)) {
+      if (this.definingСommand(check.character.type)) {      // если в клиунтой ячейке находит друг, то
 
         //Если какая-то ячека была выделена, то снимаем выделение
         if (this.gameState.indexSelectedCell) {
@@ -108,17 +109,74 @@ export default class GameController {
         }
 
         this.gamePlay.selectCell(index);                     //Выделаем персонажа
+        this.gameState.indexSelectedCell = index;            //Записываем в gameState индекс выделенной ячейки
 
-        this.gameState.indexSelectedCell = index;           //Записываем в gameState индекс выделенной ячейки
-        console.log(this.gameState.indexSelectedCell);
+      } else {                                                //иначе значит что в этой ячейке враг, то ...
+        if (this.gameState.indexSelectedCell) {                //... то проверяем то, был ли клику по вругу кликнут (т.е. выбран) какой-нибудь друг. Если да, то ...
+          const persona = this.findCharacterOnCellindex(this.gameState.indexSelectedCell);         //находим персонажа на ранее кликнутой ячейке
+          const possiblAttack = possibleAttackIndexes(this.gameState.indexSelectedCell, persona.character.distanceAttack); // составляем массив клеток, на которые может атаковать друг 
 
-      } else {
-        GamePlay.showError('Это персонаж врага, вам нельзя им управлять!');
+          if (possiblAttack.find(e => e === index)) {           //проверяем находится ли индекс данной ячейки в массиве возможных ячеек для атаки
+            await this.attack(persona, check);                        // если находится в зоне атаки то запускаем функцию атаки, вней передаем атакуещего и атакуемого
+
+            this.checkLife();                                   //Запускаем функцию удаления мертвых игроков с поля
+
+            //== Ответ врага после атаки ===
+            const arrPositionGoodPersons = [];                  // Пустой массив, в которы сложим позиции всех хороших, чтобы потом проверить их позиции на досягаемость врагов
+            this.gamePlay.positionedCharacter.forEach(e => {    // Перебираем позиции всех персонажей, 
+              if (this.definingСommand(e.character.type)) {       //если персонаж в хорошей команде, то ...
+                arrPositionGoodPersons.push(e.position);            // добавляем его позицию в массив
+              };
+            });
+
+            for (let i = 0; i < this.gamePlay.positionedCharacter.length; i++) { //Перебираем весь первоснажей на доске (чтобы найти врагов)
+              const e = this.gamePlay.positionedCharacter[i];
+              if (!this.definingСommand(e.character.type)) {                    //проверяем в какой команде каждый игрок, если игрок НЕ в команде друзей, то ....
+                const possiblAttack = possibleAttackIndexes(e.position, e.character.distanceAttack);  //составляем массив клеток, на которые может ударить перебираемый в данный момент враг
+
+                for (let j = 0; j < possiblAttack.length; j++) {              //Будем перебирать все ячейки возмодной атаки и ...
+                  const element = possiblAttack[j];
+                  if (arrPositionGoodPersons.find(el => el === element)) {      // ... сравнивать каждую ячейку с позицией друзей, и если среди них, есть позиция друга, то ... (element - индекс ячейки)                                
+                    const goodTarget = this.findCharacterOnCellindex(element);   //находим персонажа на той найденной ячейке, чтобы его атаковать    
+                    await this.attack(e, goodTarget);                            // производим атаку врагом друга  
+                    i = this.gamePlay.positionedCharacter.length;                //истанавливаем перебор врагов, т.к. один из них сделал уже удар (просто переводим счетчик в конец)
+                    break;
+                  }
+                }
+              }
+            }
+
+            this.checkLife();                                                  //Запускаем функцию удаления мертвых игроков с поля
+
+          }
+        }
+        else {
+          GamePlay.showError('Это персонаж врага, вам нельзя им управлять!');
+        }
       }
 
-
     } else {
-      console.log('в этой клетке нет персонажа');
+      //console.log('в этой клетке нет персонажа');
+
+      // Если был кликнут какой-то персонаж, то надо выполнить перемещение этого персонажа 
+      // =============== добавить условие доступности клетки в которую передвигаем ==================
+      if (this.gameState.indexSelectedCell) {                                                  //Если какая-то ячека была выделена, то ...
+
+        const persona = this.findCharacterOnCellindex(this.gameState.indexSelectedCell);         //находим персонажа на кликнутой ячейке
+        const possibleMove = possibleMoveIndexes(this.gameState.indexSelectedCell, persona.character.distanceMovi);     // Получаем массив ячеек на которые может ходить персонаж
+
+        if (possibleMove.find(e => e === index)) {                                              // если индекс клетки, на которую навели, есть в массиве возможных выбранного шагов персонажа, то ...
+          const personaNumberInArr = this.gamePlay.positionedCharacter.indexOf(persona, 0);       //находим номер персонажа в массиве всех игроков на поле, что бы потом по номеру заменить его позицию
+          this.gamePlay.positionedCharacter[personaNumberInArr].position = index;                 //заменяем в массиве игроков старую позицию на новую только что кликнутую позицию
+          this.gamePlay.redrawPositions(this.gamePlay.positionedCharacter);                       // перерисовываем поле
+          this.gamePlay.deselectCell(this.gameState.indexSelectedCell);                           // снимаем выделение с той клетки, где раньше был персонаж
+          this.gameState.indexSelectedCell = null;                                                // обнуляем констунту в которой раньше хранилась позиция кликнутой ячейки 
+          // ================= сделать переход ходы   =================
+        }
+
+        //const persona = this.findCharacterOnCellindex(this.gameState.indexSelectedCell);        //находим персонажа на кликнутой ячейке
+
+      }
     }
 
   }
@@ -133,20 +191,23 @@ export default class GameController {
         const message = this.formTooltip(check);                  // формируем сообщение с харатеристиками для показа ниже в подсказке
         this.gamePlay.showCellTooltip(message, index);            // при наведении на персонажа, показываем подсказку с характеристиками персорнажа
         this.gamePlay.setCursor(cursors.pointer);                 // если есть персонаж, то меняем курсор на палец
+
       } else {                                                  //если персонаж в плохой команде, то ...
         this.gamePlay.setCursor(cursors.crosshair);               // при наведении курсор меняется на прицел
         this.gamePlay.selectCell(index, "red");                   // при наведении ячека помечается красным кружком
       }
 
     } else {                                                    // если в ячейке нет персонажа, то ...
-      console.log('нет персонажа');
+      //console.log('нет персонажа');
       this.gamePlay.setCursor(cursors.auto);                       // если персонажа нет, то курсор меняем на стрелку
 
       if (this.gameState.indexSelectedCell) {                      //если на поле есть выбранный персонаж, то ...
         const character = this.findCharacterOnCellindex(this.gameState.indexSelectedCell);    // сохраняем в переменную выбранного персонажа
         const possibleMove = possibleMoveIndexes(this.gameState.indexSelectedCell, character.character.distanceMovi);     // Получаем массив ячеек на которые может ходить персонаж
 
-         //Здесь надо добавить в этот нижний if ещё одну ветку, где сначала проверяется не наведено ли на врага
+
+        const possiblAttack = possibleAttackIndexes(this.gameState.indexSelectedCell, character.character.distanceAttack);
+
         if (possibleMove.find(e => e === index)) {                 // если индекс клеткаю, на которую навели, есть в массиве возможных выбранного шагов персонажа, то ...
           this.gamePlay.selectCell(index, "green");                    // подсвечиваем клетку зелёным кружком 
         } else {                                                   // если индекса наведенной клетки нет в массиве возможных ходов выбранного персонажа, то ...
@@ -183,6 +244,42 @@ export default class GameController {
   //Определяем в какой компанде игрок
   definingСommand(user) {
     return !!['bowman', 'swordsman', 'magician'].find(e => e === user);
+  }
+
+  async attack(attacker, target) {
+    console.log('Здоровье врага', target.character.health);
+
+    const damage = Math.max(attacker.character.attack - target.character.defence, attacker.character.attack * 0.1); //Высчитываем урон, который будет нанесен атакующим атакуемому
+
+    await this.gamePlay.showDamage(target.position, damage); // Ожидаем завершения анимации урона
+
+    target.character.health -= damage; // Пересчитываем здоровье атакуемого
+
+    // if (!!this.gamePlay.boardEl.contains(target.position)) { // Проверяем, содержится ли элемент в DOM-дереве
+    this.gamePlay.redrawPositions(this.gamePlay.positionedCharacter); // Перерисовываем поле, т.к. изменалась полоска жизни
+    //}
+
+    console.log('После удара здоровье врага', target.character.health);
+  }
+
+  // Функция удаления убитых игроков
+  checkLife() {
+    for (let i = 0; i < this.gamePlay.positionedCharacter.length; i++) {   // Перебираем всех игроков на поле
+      if (this.gamePlay.positionedCharacter[i].character.health <= 0) {    // Если у какого-то игрока здоровье равно или меньше нуля, то ...
+       
+        //Если умер друг, то снимем выделение ячейки
+        if (this.definingСommand(this.gamePlay.positionedCharacter[i].character.type)) {      // если в клиунтой ячейке находит друг, то
+          //Если какая-то ячека была выделена, то снимаем выделение
+          if (this.gameState.indexSelectedCell) {
+            this.gamePlay.deselectCell(this.gameState.indexSelectedCell);
+            this.gameState.indexSelectedCell = null;
+          }
+        }
+
+        this.gamePlay.positionedCharacter.splice(i, 1);                     //... вырезаем этого игрока из массива всех игроков 
+      }
+    }
+    this.gamePlay.redrawPositions(this.gamePlay.positionedCharacter);      // Перерисовываем поле
   }
 }
 
