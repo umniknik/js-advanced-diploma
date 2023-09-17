@@ -22,58 +22,72 @@ export default class GameController {
   }
 
   init() {
-    this.gamePlay.drawUi(themes.prairie);
+
     // TODO: add event listeners to gamePlay events
     //Запускаем слушателей по наведение, убиранию и клику по ячейкам
     this.gamePlay.addCellEnterListener(this.onCellEnter.bind(this));
     this.gamePlay.addCellLeaveListener(this.onCellLeave.bind(this));
     this.gamePlay.addCellClickListener(this.onCellClick.bind(this));
+    this.gamePlay.addNewGameListener(this.start.bind(this));
+    this.gamePlay.addSaveGameListener(this.saveGame.bind(this));
+    this.gamePlay.addLoadGameListener(this.loadGame.bind(this));
     // TODO: load saved stated from stateService
 
     this.start();
   }
 
+  saveGame() {
+    //this.stateService.save(GameState.from());
+    this.stateService.save(this.gameState);
+  }
+
+  loadGame() {    
+    const saveStat = this.stateService.load();
+    console.log(saveStat);
+
+//    this.gameState = this.stateService.load();
+    this.gamePlay.redrawPositions(this.gameState.positionedCharacter);
+    
+  }
+
   //Старт игры
   start() {
     this.gameState = new GameState();
+    this.gameState.teme = 1;                                               // При старте игры присваиваем первую тему отрисовки игры, затем будет просто правлять к ней 1
+    this.gamePlay.drawUi(themes[this.gameState.teme]);                     // Отрисовываем тему игры 
+
     //Формируем команды
     this.goodTeam = this.formteam([Bowman, Swordsman, Magician]);
     this.badTeam = this.formteam([Daemon, Undead, Vampire]);
 
     // Расставляем игроков на поле случайным образом
-    // Формируем список возможных позиций для команды хороших
-    // const positionedCharacter = [];
+    this.positionedCharacter()
 
-    const goodAllPositins = [];
-    for (let i = 0; i < 64; i++) {
-      if (i % 8 === 0 || (i - 1) % 8 === 0) {
-        goodAllPositins.push(i);
-      }
-    }
-    // Формируем список возможных позиций для команды плохих
-    const badAllPositins = [];
-    for (let i = 0; i < 64; i++) {
-      if ((i + 2) % 8 === 0 || (i + 1) % 8 === 0) {
-        badAllPositins.push(i);
-      }
-    }
-
-    let positionedCharacter = [];
-
-    //Формируем позиции команды хороших
-    positionedCharacter = this.formPositionsTeam(this.goodTeam, goodAllPositins, positionedCharacter);
-    //Формируем позиции команды плохих все в обном массиве с позициями хороших
-    positionedCharacter = this.formPositionsTeam(this.badTeam, badAllPositins, positionedCharacter);
-
-    //отрисовываем всех персонажей
-    this.gamePlay.redrawPositions(positionedCharacter);
-    //сохраняем позиции всех в "глобальную" переменную
-    this.gamePlay.positionedCharacter = positionedCharacter;
   }
+
+  //Старт новой игры после проигрыша злодеев
+  newGame() {
+    this.gameState.teme += 1;                                  //Берем следующую тему игры
+    this.gamePlay.drawUi(themes[this.gameState.teme]);         //Отрисовываем поле
+
+    this.goodTeam = this.formteam([Bowman, Swordsman, Magician]);
+    this.badTeam = this.formteam([Daemon, Undead, Vampire]);
+
+    // Заменяем в команде хороших игроков, на тех что выжили с прошлого уровня
+    for (let i = 0; i < this.gameState.positionedCharacter.length; i++) {                //Пока i меньше количетсва игроков в новой хорошей команде
+      if (this.gameState.positionedCharacter[i].character) {                               // Проверям есть ли в старой команде игрок под таким же номером, если есть, то ...
+        this.goodTeam.characters[i] = this.gameState.positionedCharacter[i].character        // Заменяем игрока в новой команде выжившим игроком из сторой команды
+      }
+    }
+
+    this.positionedCharacter()                                                          // Расставляем игроков на поле случайным образом
+    this.gamePlay.redrawPositions(this.gameState.positionedCharacter);                   // Отрисовываем игроков на поле
+  };
 
   // Формирование компанд
   formteam(playerTypes) {
-    return generateTeam(playerTypes, 3, 4);
+    const plaersCount = this.gameState.teme + 2;                 //Опред колич игроков с каж стороны. В teme хран номер уроня (1,2,3 ...), просто к нему прибавляем 2 и получаем что с каждым уровнем колич игрок увелич
+    return generateTeam(playerTypes, 3, plaersCount);
   }
 
   //формирование позиций каждой команды
@@ -95,6 +109,7 @@ export default class GameController {
 
   //Действия при клике на любую клетку
   async onCellClick(index) {
+
     // TODO: react to click
     console.log('Кликнутая клетка', index);
     const check = this.findCharacterOnCellindex(index);       //ищем персонажа на кликнутой клетке, если есть, то сохраняем в константу 
@@ -123,14 +138,14 @@ export default class GameController {
 
             //== Ответ врага после атаки ===
             const arrPositionGoodPersons = [];                  // Пустой массив, в которы сложим позиции всех хороших, чтобы потом проверить их позиции на досягаемость врагов
-            this.gamePlay.positionedCharacter.forEach(e => {    // Перебираем позиции всех персонажей, 
+            this.gameState.positionedCharacter.forEach(e => {    // Перебираем позиции всех персонажей, 
               if (this.definingСommand(e.character.type)) {       //если персонаж в хорошей команде, то ...
                 arrPositionGoodPersons.push(e.position);            // добавляем его позицию в массив
               };
             });
 
-            for (let i = 0; i < this.gamePlay.positionedCharacter.length; i++) { //Перебираем весь первоснажей на доске (чтобы найти врагов)
-              const e = this.gamePlay.positionedCharacter[i];
+            for (let i = 0; i < this.gameState.positionedCharacter.length; i++) { //Перебираем весь первоснажей на доске (чтобы найти врагов)
+              const e = this.gameState.positionedCharacter[i];
               if (!this.definingСommand(e.character.type)) {                    //проверяем в какой команде каждый игрок, если игрок НЕ в команде друзей, то ....
                 const possiblAttack = possibleAttackIndexes(e.position, e.character.distanceAttack);  //составляем массив клеток, на которые может ударить перебираемый в данный момент враг
 
@@ -139,14 +154,34 @@ export default class GameController {
                   if (arrPositionGoodPersons.find(el => el === element)) {      // ... сравнивать каждую ячейку с позицией друзей, и если среди них, есть позиция друга, то ... (element - индекс ячейки)                                
                     const goodTarget = this.findCharacterOnCellindex(element);   //находим персонажа на той найденной ячейке, чтобы его атаковать    
                     await this.attack(e, goodTarget);                            // производим атаку врагом друга  
-                    i = this.gamePlay.positionedCharacter.length;                //истанавливаем перебор врагов, т.к. один из них сделал уже удар (просто переводим счетчик в конец)
+                    i = this.gameState.positionedCharacter.length;                //истанавливаем перебор врагов, т.к. один из них сделал уже удар (просто переводим счетчик в конец)
                     break;
                   }
                 }
               }
             }
 
-            this.checkLife();                                                  //Запускаем функцию удаления мертвых игроков с поля
+            this.checkLife();                                                  //Запускаем функцию удаления мертвых игроков с поля           
+
+
+            let whoLost = this.checkLifeTeam();                                              //Проверяем остались ли у врага игроки
+
+            if (whoLost === 'bod team lost') {
+              console.log("Плохие проиграли");
+              if (this.gameState.teme === 4) {                                 //Если чейчас мы играли на последнем 4 уровне, то ...
+                this.blockBoard();                                              // ... бликруем игру
+              } else {                                                      // иначе переходим на следующий уровень ...
+                this.addAttackDefence();                                                        //Запускаем функцию увеличения аттаки и защиты
+                this.addHealth();                                                               // Запускаем функцию прибавления здоровья выжившим игрокам
+                this.gameState.indexSelectedCell = null;                                        //Снимаем выделение с ячеки где был выбранный персонаж
+                this.newGame();
+              }
+
+            }
+
+            if (whoLost === 'good team lost') {
+              console.log("Хорошие проиграли");
+            }
 
           }
         }
@@ -166,9 +201,9 @@ export default class GameController {
         const possibleMove = possibleMoveIndexes(this.gameState.indexSelectedCell, persona.character.distanceMovi);     // Получаем массив ячеек на которые может ходить персонаж
 
         if (possibleMove.find(e => e === index)) {                                              // если индекс клетки, на которую навели, есть в массиве возможных выбранного шагов персонажа, то ...
-          const personaNumberInArr = this.gamePlay.positionedCharacter.indexOf(persona, 0);       //находим номер персонажа в массиве всех игроков на поле, что бы потом по номеру заменить его позицию
-          this.gamePlay.positionedCharacter[personaNumberInArr].position = index;                 //заменяем в массиве игроков старую позицию на новую только что кликнутую позицию
-          this.gamePlay.redrawPositions(this.gamePlay.positionedCharacter);                       // перерисовываем поле
+          const personaNumberInArr = this.gameState.positionedCharacter.indexOf(persona, 0);       //находим номер персонажа в массиве всех игроков на поле, что бы потом по номеру заменить его позицию
+          this.gameState.positionedCharacter[personaNumberInArr].position = index;                 //заменяем в массиве игроков старую позицию на новую только что кликнутую позицию
+          this.gamePlay.redrawPositions(this.gameState.positionedCharacter);                       // перерисовываем поле
           this.gamePlay.deselectCell(this.gameState.indexSelectedCell);                           // снимаем выделение с той клетки, где раньше был персонаж
           this.gameState.indexSelectedCell = null;                                                // обнуляем констунту в которой раньше хранилась позиция кликнутой ячейки 
           // ================= сделать переход ходы   =================
@@ -229,9 +264,40 @@ export default class GameController {
     }
   }
 
+  //Ф-ия растановки персонажей случайным образом
+  positionedCharacter() {
+    // Формируем список возможных позиций для команды хороших
+
+    const goodAllPositins = [];
+    for (let i = 0; i < 64; i++) {
+      if (i % 8 === 0 || (i - 1) % 8 === 0) {
+        goodAllPositins.push(i);
+      }
+    }
+    // Формируем список возможных позиций для команды плохих
+    const badAllPositins = [];
+    for (let i = 0; i < 64; i++) {
+      if ((i + 2) % 8 === 0 || (i + 1) % 8 === 0) {
+        badAllPositins.push(i);
+      }
+    }
+
+    let positionedCharacter = [];
+
+    //Формируем позиции команды хороших
+    positionedCharacter = this.formPositionsTeam(this.goodTeam, goodAllPositins, positionedCharacter);
+    //Формируем позиции команды плохих все в обном массиве с позициями хороших
+    positionedCharacter = this.formPositionsTeam(this.badTeam, badAllPositins, positionedCharacter);
+
+    //отрисовываем всех персонажей
+    this.gamePlay.redrawPositions(positionedCharacter);
+    //сохраняем позиции всех в "глобальную" переменную
+    this.gameState.positionedCharacter = positionedCharacter;
+  }
+
   //Проверяем нет ли на клетке персонажа
   findCharacterOnCellindex(index) {
-    const rezult = this.gamePlay.positionedCharacter.find(e => e.position === index)
+    const rezult = this.gameState.positionedCharacter.find(e => e.position === index)
     return rezult;
   }
   // формируем текст подсказки
@@ -256,7 +322,7 @@ export default class GameController {
     target.character.health -= damage; // Пересчитываем здоровье атакуемого
 
     // if (!!this.gamePlay.boardEl.contains(target.position)) { // Проверяем, содержится ли элемент в DOM-дереве
-    this.gamePlay.redrawPositions(this.gamePlay.positionedCharacter); // Перерисовываем поле, т.к. изменалась полоска жизни
+    this.gamePlay.redrawPositions(this.gameState.positionedCharacter); // Перерисовываем поле, т.к. изменалась полоска жизни
     //}
 
     console.log('После удара здоровье врага', target.character.health);
@@ -264,11 +330,11 @@ export default class GameController {
 
   // Функция удаления убитых игроков
   checkLife() {
-    for (let i = 0; i < this.gamePlay.positionedCharacter.length; i++) {   // Перебираем всех игроков на поле
-      if (this.gamePlay.positionedCharacter[i].character.health <= 0) {    // Если у какого-то игрока здоровье равно или меньше нуля, то ...
-       
+    for (let i = 0; i < this.gameState.positionedCharacter.length; i++) {   // Перебираем всех игроков на поле
+      if (this.gameState.positionedCharacter[i].character.health <= 0) {    // Если у какого-то игрока здоровье равно или меньше нуля, то ...
+
         //Если умер друг, то снимем выделение ячейки
-        if (this.definingСommand(this.gamePlay.positionedCharacter[i].character.type)) {      // если в клиунтой ячейке находит друг, то
+        if (this.definingСommand(this.gameState.positionedCharacter[i].character.type)) {      // если в клиунтой ячейке находит друг, то
           //Если какая-то ячека была выделена, то снимаем выделение
           if (this.gameState.indexSelectedCell) {
             this.gamePlay.deselectCell(this.gameState.indexSelectedCell);
@@ -276,10 +342,59 @@ export default class GameController {
           }
         }
 
-        this.gamePlay.positionedCharacter.splice(i, 1);                     //... вырезаем этого игрока из массива всех игроков 
+        this.gameState.positionedCharacter.splice(i, 1);                     //... вырезаем этого игрока из массива всех игроков 
       }
     }
-    this.gamePlay.redrawPositions(this.gamePlay.positionedCharacter);      // Перерисовываем поле
+    this.gamePlay.redrawPositions(this.gameState.positionedCharacter);      // Перерисовываем поле
   }
+
+  //Метод проверки наличия игроков в любой из команд
+  checkLifeTeam() {
+    let countGoodperson = 0;                                              // Количество хороших игроков на поле
+    let countBadperson = 0;                                               // Количество плохих игроков на поле
+    this.gameState.positionedCharacter.forEach(e => {                        // Перебираем всех игроков на поле
+      if (this.definingСommand(e.character.type)) {                            // если игрок в хорошей команде, то ...
+        countGoodperson += 1;                                                   // прибвляем в количеству хороших игроков на поле +1
+      } else {
+        countBadperson += 1;                                                    // иначе прибавляем в количеству плохих игроков на поле +1
+      }
+    });
+
+    console.log('Хороших =', countGoodperson, "  Плохих =", countBadperson)
+    if (countGoodperson === 0) {                                          // Если после перебора всех игроков в хорошей команде ноль игроков, то возвращаем что хорошие проиграли
+      return ("good team lost");
+    }
+
+    if (countBadperson === 0) {                                          // Если после перебора всех игроков в плохой команде ноль игроков, то возвращаем что плохие проиграли
+      return ("bod team lost");
+    }
+
+  }
+  //Функция прибавления здоровья +80 выживших игрокам
+  addHealth() {
+    this.gameState.positionedCharacter.forEach(e => {                        // Перебираем всех игроков на поле
+
+      e.character.health += 80;                                             // Прибавляем к здоровью выживших игроков 80
+      if (e.character.health > 100) {                                        // Если здоровье получилось больше 100 , то ...
+        e.character.health = 100                                              // ... приравниваем здоровье к 100
+      }
+
+    });
+  }
+
+  addAttackDefence() {
+    this.gameState.positionedCharacter.forEach(e => {                        // Перебираем всех игроков на поле
+      e.character.attack = Math.max(e.character.attack, e.character.attack * (80 + e.character.health) / 100);     // Повышаем уровень атаки
+      e.character.defence = Math.max(e.character.defence, e.character.defence * (80 + e.character.health) / 100);  // Повышаем уровень защиты
+    });
+  }
+  // Блокировка поля
+  blockBoard() {
+    this.gamePlay.cellClickListeners = [];
+    this.gamePlay.cellEnterListeners = [];
+    this.gamePlay.cellLeaveListeners = [];
+    this.gamePlay.setCursor(cursors.auto);
+  }
+
 }
 
