@@ -36,19 +36,54 @@ export default class GameController {
     this.start();
   }
 
+  // Сохраняем статистику игры в локал сторадж
   saveGame() {
-    //this.stateService.save(GameState.from());
-    this.stateService.save(this.gameState);
+    this.stateService.save(this.gameState);     
   }
 
-  loadGame() {    
-    const saveStat = this.stateService.load();
-    console.log(saveStat);
+  // Извлекаем статистику игры из локал сторадж
+  loadGame() {
+    const saveStat = this.stateService.load();                      // Извлекаем сохраненые данные из локалсторадж
+    this.gameState.positionedCharacter = [];                        // Чистим позиции всех персонажей, которые были до нажатия кнопки load 
 
-//    this.gameState = this.stateService.load();
-    this.gamePlay.redrawPositions(this.gameState.positionedCharacter);
-    
+    //Эта часть нужна из-за того, что в торажд не сохраняется прототип, поэтому нельзя сохранить классы  и потом их извлеч (может быть и можно, но у меня не получилось), будем заново создавать игроков из классов
+    for (let i = 0; i < saveStat.positionedCharacter.length; i++) {     // будем перебирать всех персонажей из локал стораж,
+      const nameType = saveStat.positionedCharacter[i].character.type;    // извлекаем тип каждого персонажа
+      let personn = ''; 
+      switch (nameType) {                                                  // сравниваем извдлеченного персонажа с типом, если он то ....
+        case 'bowman':  
+          personn = this.formteam([Bowman]).characters[0];                      // создаем персонажа данного класса
+          break;
+        case 'swordsman':
+          personn = this.formteam([Swordsman]).characters[0];
+          break;
+        case 'magician':
+          personn = this.formteam([Magician]).characters[0];
+          break;
+        case 'daemon':
+          personn = this.formteam([Daemon]).characters[0];
+          break;
+        case 'undead':
+          personn = this.formteam([Undead]).characters[0];
+          break;
+        case 'vampire':
+          personn = this.formteam([Vampire]).characters[0];
+          break;
+      }
+      //копируем все характеристики персонажей, которые были до сохранения
+      personn.level = saveStat.positionedCharacter[i].character.level;
+      personn.attack = saveStat.positionedCharacter[i].character.attack;
+      personn.defence = saveStat.positionedCharacter[i].character.defence;
+      personn.distanceAttack = saveStat.positionedCharacter[i].character.distanceAttack;
+      personn.distanceMovi = saveStat.positionedCharacter[i].character.distanceMovi;
+      personn.health = saveStat.positionedCharacter[i].character.health;
+      
+      this.gameState.positionedCharacter.push(new PositionedCharacter(personn, saveStat.positionedCharacter[i].position))  //добавляем в массив позиций персонажей, только что созданных персонажей с позициями
+    }
+ 
+    this.gamePlay.redrawPositions(this.gameState.positionedCharacter);     // Отрисовываем персонажей на доске
   }
+
 
   //Старт игры
   start() {
