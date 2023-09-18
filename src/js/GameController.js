@@ -80,7 +80,9 @@ export default class GameController {
       
       this.gameState.positionedCharacter.push(new PositionedCharacter(personn, saveStat.positionedCharacter[i].position))  //добавляем в массив позиций персонажей, только что созданных персонажей с позициями
     }
- 
+    
+    this.gameState.teme = saveStat.teme;
+    this.gamePlay.drawUi(themes[this.gameState.teme]);         //Отрисовываем поле
     this.gamePlay.redrawPositions(this.gameState.positionedCharacter);     // Отрисовываем персонажей на доске
   }
 
