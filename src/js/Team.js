@@ -12,7 +12,7 @@
  * ```
  * */
 export default class Team {
-  constructor (characters) {
+  constructor(characters) {
     this.characters = characters;
   }
 

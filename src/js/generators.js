@@ -18,8 +18,6 @@ export function* characterGenerator(allowedTypes, maxLevel) {
     const randomID = Math.floor(Math.random() * (allowedTypes.length));
     yield new allowedTypes[randomID](randomlevel);
   }
-
-
 }
 
 /**
@@ -37,8 +35,9 @@ export function generateTeam(allowedTypes, maxLevel, characterCount) {
   const playerGenerator = characterGenerator(allowedTypes, maxLevel);
 
   while (characterCount > 1) {
-    arrTeam.push(playerGenerator.next().value)
-    characterCount = characterCount - 1;
+    arrTeam.push(playerGenerator.next().value);
+    // eslint-disable-next-line
+    characterCount -= 1;
   }
 
   const team = new Team(arrTeam);

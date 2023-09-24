@@ -1,36 +1,27 @@
 {
-    "extends": "airbnb-base",
-    "env": {
-       "es6": true,
-       "browser": true,
-       "jest": true
-    },
-    "rules": {
-      "no-restricted-syntax": [
-        "error",
-        "LabeledStatement",
-        "WithStatement"
-      ]
-    }
+  "extends": "airbnb-base",
+  "env": {
+    "es6": true,
+    "browser": true,
+    "jest": true
+  },
+  "rules": {
+    "max-len": [
+      "error",
+      {
+        "code": 300
+      }
+    ],
+    "class-methods-use-this": "off",
+    "no-restricted-syntax": [
+      "error",
+      "LabeledStatement",
+      "WithStatement"
+    ],
+    "no-lonely-if": "off",
+    "no-plusplus": "off",
+    "no-mixed-operators": "off",
+    "no-console": "off",
+    "no-alert": "off"
   }
-
-// {
-//     "extends": "airbnb-base",
-//     "env": {
-//        "es6": true,
-//        "browser": true,
-//        "jest": true
-//     },
-//     "rules": {
-//       "no-restricted-syntax": [
-//         "error",
-//         "LabeledStatement",
-//         "WithStatement"
-//       ],
-//       "no-plusplus": 0,
-//       "no-new": 0,
-//       "no-alert": 0,
-//       "no-console": 0,
-//       "no-restricted-globals": 0
-//     }
-//   }
+}
